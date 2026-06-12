@@ -39,7 +39,7 @@ final class MossSoundEffectTests: XCTestCase {
 
     func testWAVEncoding() {
         // 100 samples of a known ramp -> valid RIFF/WAVE header + correct sizes.
-        let ramp = MLXArray(stride(from: Float(-1), to: 1, by: 0.02).map { $0 }).reshaped(1, 1, 100)
+        let ramp = MLXArray((0 ..< 100).map { Float($0) * 0.02 - 1 }).reshaped(1, 1, 100)
         let data = MossSoundEffectPackage.encodeWAV(ramp, sampleRate: 48_000)
         XCTAssertEqual(String(data: data.prefix(4), encoding: .ascii), "RIFF")
         XCTAssertEqual(String(data: data.subdata(in: 8 ..< 12), encoding: .ascii), "WAVE")
