@@ -155,3 +155,10 @@ public final class MossSoundEffectPackage: ModelPackage {
         return data
     }
 }
+
+extension MossSoundEffectPackage {
+    /// The author one-liner the engine registers.
+    public nonisolated static var registration: PackageRegistration {
+        .of(MossSoundEffectPackage.self)
+    }
+}
