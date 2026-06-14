@@ -1,6 +1,6 @@
 # mlx-moss-soundeffect-swift
 
-The MLXEngine **`soundEffect`** capability package (contract 1.2.0 — first package for the
+The MLXEngine **`soundEffect`** capability package (contract 1.3.0 — first package for the
 capability) over [MOSS-SoundEffect-v2.0](https://huggingface.co/OpenMOSS-Team/MOSS-SoundEffect-v2.0):
 text → sound effect (foley / ambience / creature / action), 48 kHz `.wav`, up to 30 s, EN/ZH.
 
