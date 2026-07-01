@@ -36,12 +36,32 @@ public final class MossSoundEffectPackage: ModelPackage {
             provenance: Provenance(
                 sourceRepo: "mlx-community/MOSS-SoundEffect-v2.0-bf16", revision: "main", tier: 3),
             requirements: RequirementsManifest(
-                // Multi-component pipeline: 1.3B DiT + 1.5 GB fp32 VAE + 1.7B Qwen3 encoder.
-                // Measured peaks on M5 Max at 100 steps: bf16 14.2 GB, int4 12.2 GB —
-                // budgeted with headroom for the 30 s decode.
+                // Split footprint (contract 1.14). Multi-component pipeline: DiT + fp32 VAE + Qwen3-1.7B
+                // text encoder. The encoder (~4 GB fp32 shards, mlx-community text_encoder/) encodes the
+                // prompt ONCE, then is EVICTED before the 100-step CFG denoise (encoder-evict lever, in
+                // moss-soundeffect-mlx-swift Pipeline.generate) — so it is NOT part of the
+                // resident-through-denoise floor.
+                //
+                // resident (post-evict, held through the denoise = DiT + fp32 VAE):
+                //   bf16: dit 2.8 GB + vae 1.5 GB → ~5 GB    int4: dit 0.8 GB + vae 1.5 GB → ~3 GB
+                // (on-disk mlx-community bytes: bf16 dit 2832 MB / int4 dit 831 MB / vae 1486 MB fp32).
+                // The VAE stays fp32 in both quants; only the DiT is quantized, hence the small delta.
+                //
+                // peakActivationBytes = the 100-step CFG denoise (two DiT forwards/step at the 1500-token
+                // latent) + the 30 s fp32 VAE decode transient — the activation driver is the
+                // 1500-token / 100-step envelope, largely dtype-independent (the LTX co-residency finding).
+                //
+                // ⚠️ peakActivationBytes is a SMOKE ESTIMATE (derived from the prior flat peaks — bf16
+                // 14.2 / int4 12.2 GB measured at 100 steps — minus the post-evict resident floor); in-app
+                // phys_footprint reads ~2.5–2.9× higher — IN-APP PHYS RE-BASELINE PENDING (admission basis,
+                // R-MEM-1).
                 footprints: [
-                    QuantFootprint(quant: .bf16, residentBytes: 15_000_000_000),
-                    QuantFootprint(quant: .int4, residentBytes: 13_000_000_000),
+                    QuantFootprint(quant: .bf16,
+                                   residentBytes: 5_000_000_000,
+                                   peakActivationBytes: 10_000_000_000),
+                    QuantFootprint(quant: .int4,
+                                   residentBytes: 3_000_000_000,
+                                   peakActivationBytes: 10_000_000_000),
                 ],
                 requiredBackends: [.metalGPU],
                 os: OSRequirement(minMacOS: SemanticVersion(major: 26, minor: 0, patch: 0)),
@@ -80,6 +100,10 @@ public final class MossSoundEffectPackage: ModelPackage {
 
     public func unload() async {
         pipeline = nil
+        // Drop the DiT / VAE / encoder buffers from MLX's pool too — niling the ref alone leaves
+        // them cached, so phys_footprint doesn't fall and engine.evict / R-MEM-1 can't reclaim
+        // (RSS then grows monotonically across model switches). Contract 1.14 requirement.
+        MLX.Memory.clearCache()
     }
 
     public func run(_ request: any CapabilityRequest) async throws -> any CapabilityResponse {
