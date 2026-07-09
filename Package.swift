@@ -18,10 +18,12 @@ let package = Package(
         .library(name: "MLXMossSoundEffect", targets: ["MLXMossSoundEffect"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/xocialize/mlx-engine-swift", from: "0.3.0"),
+        // Bumped to 0.23.0 for the WeightSourcing auto-materialization contract (types ≥0.19.0).
+        .package(url: "https://github.com/xocialize/mlx-engine-swift", from: "0.23.0"),
         .package(url: "https://github.com/xocialize/moss-soundeffect-mlx-swift.git", from: "0.1.2"),
         .package(url: "https://github.com/ml-explore/mlx-swift.git", from: "0.30.0"),
-        .package(url: "https://github.com/huggingface/swift-transformers", from: "1.1.6"),
+        // Native downloader for WeightSourcing auto-materialization.
+        .package(url: "https://github.com/huggingface/swift-huggingface.git", from: "0.9.0"),
     ],
     targets: [
         .target(
@@ -30,7 +32,7 @@ let package = Package(
                 .product(name: "MLXToolKit", package: "mlx-engine-swift"),
                 .product(name: "MossSoundEffectMLX", package: "moss-soundeffect-mlx-swift"),
                 .product(name: "MLX", package: "mlx-swift"),
-                .product(name: "Hub", package: "swift-transformers"),
+                .product(name: "HuggingFace", package: "swift-huggingface"),
             ],
             // MossSoundEffectPipeline (MLX arrays + tokenizer) isn't Sendable-audited; the engine
             // serializes all lifecycle on InferenceActor, so v5 mode keeps strict region-isolation
@@ -42,6 +44,8 @@ let package = Package(
             dependencies: [
                 "MLXMossSoundEffect",
                 .product(name: "MLXServeCore", package: "mlx-engine-swift"),
+                // The offline MAT-1..5 materialization gate.
+                .product(name: "MLXServeConformance", package: "mlx-engine-swift"),
             ]
         ),
     ]

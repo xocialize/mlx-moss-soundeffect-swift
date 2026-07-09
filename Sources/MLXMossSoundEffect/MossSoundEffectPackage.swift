@@ -1,5 +1,4 @@
 import Foundation
-import Hub
 import MLX
 import MLXToolKit
 import MossSoundEffectMLX
@@ -8,6 +7,9 @@ import MossSoundEffectMLX
 public enum MossSoundEffectError: Error, Equatable {
     /// Requested duration exceeds the model's 30 s ceiling.
     case durationOutOfRange(requested: Double, max: Double)
+    /// Weight sources are missing and there is no store root (or resolved directory) to
+    /// materialize into.
+    case missingWeights(String)
 }
 
 /// An MLXEngine `soundEffect` package over **MOSS-SoundEffect-v2.0** (OpenMOSS) — text →
@@ -89,10 +91,22 @@ public final class MossSoundEffectPackage: ModelPackage {
 
     public func load() async throws {
         guard pipeline == nil else { return }
-        // Download (or reuse the cached) mlx-community snapshot. When the engine has set a
-        // model-store root, point the Hub download base there.
-        let hub = configuration.modelsRootDirectory.map { HubApi(downloadBase: $0) } ?? .shared
-        let directory = try await hub.snapshot(from: configuration.repo)
+        // Auto-materialize the missing snapshot into the engine store (dir-less configs only;
+        // explicit directories never touch the network), forwarding progress via
+        // WeightDownloadProgress so the engine's PreparationMonitor surfaces `.downloading`.
+        let storeRoot = configuration.modelsRootDirectory
+        let missing = configuration.missingWeightSources(storeRoot: storeRoot)
+        if !missing.isEmpty {
+            guard let storeRoot else {
+                throw MossSoundEffectError.missingWeights(
+                    "no models root set and sources missing: \(missing.map(\.role).joined(separator: ", "))")
+            }
+            try await WeightMaterializer.materialize(missing, into: storeRoot)
+        }
+        try Task.checkCancellation()
+        guard let directory = configuration.resolved(storeRoot: storeRoot).modelDirectory else {
+            throw MossSoundEffectError.missingWeights("unresolved model directory (no store root)")
+        }
         // The model-core loader verifies with `.noUnusedKeys` — a mismatched checkpoint
         // fails here at load, never silently at inference.
         pipeline = try await MossSoundEffectPipeline.load(from: directory)
