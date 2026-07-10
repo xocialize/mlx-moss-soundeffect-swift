@@ -1,5 +1,5 @@
 {
-  "originHash" : "397b4450fc76f5440d7e6edaf8a9d5d227b1a9fb3a30b4762819a09785a2b2cd",
+  "originHash" : "32b04b8ec74d09f376ab5d87956dd87c61c6f0b44c6979b78f178c8ed87acd60",
   "pins" : [
     {
       "identity" : "eventsource",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-engine-swift",
       "state" : {
-        "revision" : "86b53ba35961ced25a5190f6e371c6f435597ef0",
-        "version" : "0.23.0"
+        "revision" : "8de8b57f827869c10f9dbfe4c0d56ee35c20bf9f",
+        "version" : "0.27.0"
       }
     },
     {
@@ -33,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/moss-soundeffect-mlx-swift.git",
       "state" : {
-        "revision" : "223b63efe1de493bc4e52542279edafdc37142b1",
-        "version" : "0.1.2"
+        "revision" : "a70cc21368a9ca26ff732af0d7801780188f01f2",
+        "version" : "0.2.0"
       }
     },
     {

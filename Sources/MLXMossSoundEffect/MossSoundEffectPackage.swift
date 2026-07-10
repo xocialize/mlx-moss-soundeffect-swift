@@ -121,11 +121,15 @@ public final class MossSoundEffectPackage: ModelPackage {
     }
 
     public func run(_ request: any CapabilityRequest) async throws -> any CapabilityResponse {
+        // CAN-1: the entry checkpoint is the FIRST act of run() — before notLoaded validation
+        // (engine ≥ 0.27.0). Mid-run cadence: the throwing onStep hook below fires before every
+        // CFG denoise step AND once more before the VAE decode (core ≥ 0.2.0), rethrowing the
+        // CancellationError unchanged through the core's rethrows chain.
+        try Task.checkCancellation()
         guard let pipeline else { throw PackageError.notLoaded }
         guard request.capability == .soundEffect, let sfx = request as? SoundEffectRequest else {
             throw PackageError.unsupportedCapability(request.capability)
         }
-        try Task.checkCancellation()
 
         let seconds = sfx.durationSeconds ?? configuration.defaultDurationSeconds
         guard seconds > 0, seconds <= Double(pipeline.maxInferenceSeconds) else {
@@ -140,8 +144,10 @@ public final class MossSoundEffectPackage: ModelPackage {
             numInferenceSteps: sfx.steps ?? configuration.defaultSteps,
             cfgScale: sfx.guidanceScale.map(Float.init) ?? configuration.defaultGuidanceScale,
             seed: sfx.seed ?? 0,
-            // Cancellation yield point per denoising step (C13): a governor-initiated
-            // cancellation aborts the loop so the engine can reclaim and requeue.
+            // Cancellation yield points (C13/CAN gate): the core fires this before each
+            // denoising step and once more before the final VAE decode (core ≥ 0.2.0) — a
+            // cancellation aborts the loop / skips the decode so the engine can reclaim
+            // and requeue.
             onStep: { _ in try Task.checkCancellation() }
         )
         eval(waveform)
