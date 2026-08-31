@@ -53,17 +53,24 @@ public final class MossSoundEffectPackage: ModelPackage {
                 // latent) + the 30 s fp32 VAE decode transient — the activation driver is the
                 // 1500-token / 100-step envelope, largely dtype-independent (the LTX co-residency finding).
                 //
-                // ⚠️ peakActivationBytes is a SMOKE ESTIMATE (derived from the prior flat peaks — bf16
-                // 14.2 / int4 12.2 GB measured at 100 steps — minus the post-evict resident floor); in-app
-                // phys_footprint reads ~2.5–2.9× higher — IN-APP PHYS RE-BASELINE PENDING (admission basis,
-                // R-MEM-1).
+                // PHYS RE-BASELINED 2026-08-31 (AB-T-0107): direct-load harness, task_vm_info
+                // phys_footprint at 50 ms through generate (10 steps — per-step CFG shapes are
+                // step-count-independent — plus the full 30 s fp32 VAE decode), two runs. bf16:
+                // post-load floor 7.32 GB; in-run peak 25.33 GB both runs. resident = the load
+                // floor (a warm-but-idle model; cache above it is reclaimable), peakActivation =
+                // peak − floor. int4 is DERIVED from the bf16 measurement: floor minus the
+                // on-disk DiT delta (2832 → 831 MB ≈ 2.0 GB); activations dtype-independent.
+                // ⚠️ Separate finding: after unload() + MLX clearCache the process still held
+                // 19.3 GB (Metal-heap retention below MLX's cache — the old flat 14.2 GB claim
+                // was itself an underread). Filed with the sweep receipt; eviction reclaim is
+                // NOT yet a full return-to-floor for this package.
                 footprints: [
                     QuantFootprint(quant: .bf16,
-                                   residentBytes: 5_000_000_000,
-                                   peakActivationBytes: 10_000_000_000),
+                                   residentBytes: 7_400_000_000,
+                                   peakActivationBytes: 18_000_000_000),
                     QuantFootprint(quant: .int4,
-                                   residentBytes: 3_000_000_000,
-                                   peakActivationBytes: 10_000_000_000),
+                                   residentBytes: 5_400_000_000,
+                                   peakActivationBytes: 18_000_000_000),
                 ],
                 requiredBackends: [.metalGPU],
                 os: OSRequirement(minMacOS: SemanticVersion(major: 26, minor: 0, patch: 0)),

@@ -1,6 +1,6 @@
 # mlx-moss-soundeffect-swift
 
-The MLXEngine **`soundEffect`** capability package (contract 1.3.0 — first package for the
+The MLXEngine **`soundEffect`** capability package (contract 1.2.0 — first package for the
 capability) over [MOSS-SoundEffect-v2.0](https://huggingface.co/OpenMOSS-Team/MOSS-SoundEffect-v2.0):
 text → sound effect (foley / ambience / creature / action), 48 kHz `.wav`, up to 30 s, EN/ZH.
 
@@ -51,9 +51,9 @@ denoising step (`onStep` → `Task.checkCancellation()`, ~0.5 s granularity).
 
 ## Dependencies / platform
 
-- `mlx-engine-swift` (`MLXToolKit`, `MLXServeCore` for tests) — local-path dep for in-workspace dev
+- `mlx-engine-swift` (`MLXToolKit`, `MLXServeCore` for tests) — tagged URL, builds standalone
 - `moss-soundeffect-mlx-swift` (`MossSoundEffectMLX`) — tagged release
-- `mlx-swift`, `swift-transformers` (`Hub`)
+- `mlx-swift`; `swift-huggingface` (`HubClient` for weight auto-materialization)
 
 Platform: macOS 26+. Swift language mode v5 (the pipeline's MLX/tokenizer state is not yet
 Sendable-audited; the engine serializes all lifecycle on its inference actor).

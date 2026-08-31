@@ -5,8 +5,8 @@ import PackageDescription
 // (1.3B flow-matching DiT + continuous DAC VAE + Qwen3 encoder, 48 kHz SFX). A thin conformance
 // layer wrapping the standalone inference engine moss-soundeffect-mlx-swift (product
 // `MossSoundEffectMLX`), the same way mlx-voxcpm2-tts-swift wraps mlx-voxcpm-swift. The engine
-// contract (MLXToolKit) is a local-path dep for in-workspace dev; the model core is pinned to a
-// tagged release.
+// contract (MLXToolKit) and the model core are both tagged-URL deps — the package builds
+// standalone without a local workspace checkout.
 //
 // First package for the `soundEffect` capability (contract 1.2.0).
 let package = Package(
