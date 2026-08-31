@@ -137,18 +137,29 @@ public final class MossSoundEffectPackage: ModelPackage {
                 requested: seconds, max: Double(pipeline.maxInferenceSeconds))
         }
 
+        let steps = sfx.steps ?? configuration.defaultSteps
         let waveform = try pipeline.generate(
             prompt: sfx.prompt,
             seconds: seconds,
             negativePrompt: sfx.negativePrompt ?? "",
-            numInferenceSteps: sfx.steps ?? configuration.defaultSteps,
+            numInferenceSteps: steps,
             cfgScale: sfx.guidanceScale.map(Float.init) ?? configuration.defaultGuidanceScale,
             seed: sfx.seed ?? 0,
             // Cancellation yield points (C13/CAN gate): the core fires this before each
-            // denoising step and once more before the final VAE decode (core ≥ 0.2.0) — a
-            // cancellation aborts the loop / skips the decode so the engine can reclaim
-            // and requeue.
-            onStep: { _ in try Task.checkCancellation() }
+            // denoising step and once more (index == steps) before the final VAE decode
+            // (core ≥ 0.2.0) — a cancellation aborts the loop / skips the decode so the
+            // engine can reclaim and requeue. The same hook carries V2 run progress: the
+            // engine binds `RunProgress` around run(), so per-step reports surface in the
+            // host's RunMonitor (ENGINE-NEEDS V2; a fixed 30 s latent means the step count
+            // is the whole story — every render walks all `steps` regardless of duration).
+            onStep: { i in
+                if i < steps {
+                    RunProgress.report(.denoise, step: i + 1, totalSteps: steps)
+                } else {
+                    RunProgress.report(.decode)
+                }
+                try Task.checkCancellation()
+            }
         )
         eval(waveform)
 
